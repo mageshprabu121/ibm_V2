@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <img src="https://res.cloudinary.com/dadvxtk3n/image/upload/v1722575283/askHR_j9k0x2.png" alt="App Logo">
+            <h1>AskHR Chatbot</h1>
+        </div>
+        <div class="chat-log" id="chat-log"></div>
+        <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="startListening()">🎤</button>
+            <button onclick="stopListening()">⏹️</button>
+        </div>
+    </div>
+    <script>
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.interimResults = true;
+        recognition.continuous = true;
+
+        recognition.onstart = () => {
+            console.log("Listening...");
+            document.getElementById('chat-input').placeholder = "Listening...";
+        };
+
+        recognition.onresult = (event) => {
+            const inputField = document.getElementById('chat-input');
+            let interim_transcript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    inputField.value += event.results[i][0].transcript;
+                    inputField.placeholder = "Type a message...";
+                } else {
+                    interim_transcript += event.results[i][0].transcript;
+                }
+            }
+            console.log(event.results[0][0].transcript);
+            
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error", event);
+            document.getElementById('chat-input').placeholder = "Type a message...";
+        };
+
+        recognition.onend = () => {
+            console.log("Stopped listening.");
+            document.getElementById('chat-input').placeholder = "Type a message...";
+        };
+
+        function startListening() {
+            recognition.start();
+        }
+        function stopListening() {
+            recognition.stop();
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById('chat-input');
+            const chatLog = document.getElementById('chat-log');
+            const userMessage = inputField.value;
+            if (!userMessage) return;
+
+            const userMessageElement = document.createElement('p');
+            userMessageElement.className = 'user';
+            userMessageElement.textContent = userMessage;
+            chatLog.appendChild(userMessageElement);
+            inputField.value = '';
+
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: userMessage }),
+            });
+
+            const data = await response.json();
+            const botMessage = data.answer;
+
+            const botMessageElement = document.createElement('p');
+            botMessageElement.className = 'bot';
+            botMessageElement.textContent = botMessage;
+            chatLog.appendChild(botMessageElement);
+
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        document.getElementById('chat-input').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+});
+    </script>
+</body>
+</html>
